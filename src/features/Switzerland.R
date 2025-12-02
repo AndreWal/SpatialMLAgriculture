@@ -60,7 +60,9 @@ for (i in 1:length(variables)){
     
     tiff = rast(url_request)
     
-    swmap_wgs84[[paste0(var,dep)]] <- exact_extract(tiff[[1]], swmap_wgs84, 'mean')
+    depad = gsub("-", "", dep)
+    
+    swmap_wgs84[[paste0(var,depad)]] <- exact_extract(tiff[[1]], swmap_wgs84, 'mean')
     
   }
 }

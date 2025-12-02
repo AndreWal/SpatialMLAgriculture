@@ -13,10 +13,16 @@ RUN apt-get update && \
         g++ \
     && rm -rf /var/lib/apt/lists/*
 
+RUN echo 'options(repos = c(CRAN = "https://cloud.r-project.org"))' >> /usr/local/lib/R/etc/Rprofile.site
+
 RUN install2.r --error --skipinstalled --ncpus -1 \
       openxlsx \
       tidymodels \
       gdalUtilities \
       exactextractr \
       elevatr \
+      vip \
+      waywiser \
+      spatialsample \
+      xgboost \
     && rm -rf /tmp/downloaded_packages

@@ -52,7 +52,9 @@ for (i in 1:length(variables)){
     
     tiff = rast(url_request)
     
-    germap[[paste0(var,dep)]] <- exact_extract(tiff[[1]], germap, 'mean')
+    depad = gsub("-", "", dep)
+    
+    germap[[paste0(var,depad)]] <- exact_extract(tiff[[1]], germap, 'mean')
     
   }
 }
@@ -87,7 +89,7 @@ gerdat = dat |> full_join(germap, by = "DISTRICT_N") |> drop_na()
 
 ### Create cubic trend 
 
-gerdat = gerdat |> mutate(trend = (year - 1890)/10, trendsq = trend*trend, trendcub = trendsq*trend) |> select(-BEZIRK,-KT,-NAME)
+gerdat = gerdat |> mutate(trend = (year - 1890)/10, trendsq = trend*trend, trendcub = trendsq*trend) |> select(-OBJECTID,-SHAPE_LENG,-SHAPE_AREA,-SHAPE_LEN)
 
 ### Save data
 
