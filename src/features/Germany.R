@@ -7,25 +7,17 @@ library(terra)
 library(exactextractr)
 library(elevatr)
 
-### CH shapefile
+### GER shapefile
 
-swmap = read_sf(paste0(getwd(), "/project/Data/raw/Switzerland/shapefiles_bfs/ag-b-00.03-889-gg01g1/g1g01-shp_080214/G1G01.shp"))
+germap = read_sf(paste0(getwd(), "/project/Data/raw/Germany/Shapefiles/harvard-german1895electoraldistricts-geojson.json"))
 
-st_crs(swmap) <- 21781
-
-swmap_wgs84 <- st_transform(swmap, 4326)
-
-# Check if transformations did not produce distortions
-par(mfrow = c(1, 2))
-plot(st_geometry(swmap), main = "Original (LV03, EPSG:21781)")
-plot(st_geometry(swmap_wgs84), main = "Nach WGS84 (EPSG:4326)")
-par(mfrow = c(1, 1))
+germap = germap |> filter(DISTRICT_N > 0)
 
 ### Soil data
 
 # prep to pull the data
 
-bbsw <- st_bbox(swmap_wgs84)
+bbsw <- st_bbox(germap)
 
 variables = c("bdod", "cfvo", "clay", "sand", "silt", "cec","nitrogen", "soc", "phh2o")
 depth = c("5-15cm","15-30cm","30-60cm","60-100cm","100-200cm")
@@ -60,7 +52,7 @@ for (i in 1:length(variables)){
     
     tiff = rast(url_request)
     
-    swmap_wgs84[[paste0(var,dep)]] <- exact_extract(tiff[[1]], swmap_wgs84, 'mean')
+    germap[[paste0(var,dep)]] <- exact_extract(tiff[[1]], germap, 'mean')
     
   }
 }
@@ -68,7 +60,7 @@ for (i in 1:length(variables)){
 ### Elevation
 
 dem_aws <- get_elev_raster(
-  locations = swmap_wgs84,
+  locations = germap,
   z         = 10,
   src       = "aws",        
   clip      = "locations"   
@@ -76,25 +68,28 @@ dem_aws <- get_elev_raster(
 
 dem_aws <- rast(dem_aws) 
 
-swmap_wgs84$elev <- exact_extract(dem_aws[[1]], swmap_wgs84, 'mean')
+germap$elev <- exact_extract(dem_aws[[1]], germap, 'mean')
 
 tri_riley <- terrain(dem_aws, v = "TRIriley", neighbors = 8)
 
-swmap_wgs84$ruggedness <- exact_extract(tri_riley, swmap_wgs84, "mean")
+germap$ruggedness <- exact_extract(tri_riley, germap, "mean")
+
+germap = germap |> mutate(DISTRICT_N = ifelse(DISTRICT_N == 3136, 31, DISTRICT_N))
 
 ### Response variable
 
-dat = read.xlsx("/home/rstudio/project/Data/raw/Switzerland/Data_Muni_1999.xlsx")
+dat = read.xlsx("/home/rstudio/project/Data/raw/Germany/Data_1890_1918.xlsx")
 
-dat = dat |> filter(year > 1899) |> mutate(firsh = first_sector/(first_sector + second_sector + third_sector)) |>
-  select(mun_id, year, firsh) #|> pivot_wider(names_from = year, values_from = firsh, names_prefix = "firsh")
+dat = dat |> filter(Jahr %in% c(1895, 1907)) |> select(Jahr, Wahlkreis_Nummer, Erster_Sektor) |>
+  rename(year = Jahr, DISTRICT_N = Wahlkreis_Nummer, firsh = Erster_Sektor) %>% mutate(firsh = firsh/100)
 
-swdat = dat |> full_join(swmap_wgs84, by = c("mun_id" = "GMDE")) %>% drop_na() 
+gerdat = dat |> full_join(germap, by = "DISTRICT_N") |> drop_na() 
 
 ### Create cubic trend 
 
-swdat = swdat |> mutate(trend = (year - 1890)/10, trendsq = trend*trend, trendcub = trendsq*trend) |> select(-BEZIRK,-KT,-NAME)
-  
+gerdat = gerdat |> mutate(trend = (year - 1890)/10, trendsq = trend*trend, trendcub = trendsq*trend) |> select(-BEZIRK,-KT,-NAME)
+
 ### Save data
 
-saveRDS(swdat, file = paste0(getwd(),"/project/Data/processed/swdat.rds"))
+saveRDS(gerdat, file = paste0(getwd(),"/project/Data/processed/gerdat.rds"))
+

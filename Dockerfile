@@ -18,4 +18,5 @@ RUN install2.r --error --skipinstalled --ncpus -1 \
       tidymodels \
       gdalUtilities \
       exactextractr \
+      elevatr \
     && rm -rf /tmp/downloaded_packages
