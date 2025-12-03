@@ -25,4 +25,6 @@ RUN install2.r --error --skipinstalled --ncpus -1 \
       waywiser \
       spatialsample \
       xgboost \
+      CAST \
+      caret \
     && rm -rf /tmp/downloaded_packages
