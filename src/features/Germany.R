@@ -78,18 +78,22 @@ germap$ruggedness <- exact_extract(tri_riley, germap, "mean")
 
 germap = germap |> mutate(DISTRICT_N = ifelse(DISTRICT_N == 3136, 31, DISTRICT_N))
 
+germap$area = as.numeric(st_area(germap)/1000)
+
 ### Response variable
 
 dat = read.xlsx("/home/rstudio/project/Data/raw/Germany/Data_1890_1918.xlsx")
 
-dat = dat |> filter(Jahr %in% c(1895, 1907)) |> select(Jahr, Wahlkreis_Nummer, Erster_Sektor) |>
-  rename(year = Jahr, DISTRICT_N = Wahlkreis_Nummer, firsh = Erster_Sektor) %>% mutate(firsh = firsh/100)
+dat <- dat |>  rename(year = Jahr, DISTRICT_N = Wahlkreis_Nummer, firsh = Erster_Sektor) |>  mutate(firsh = firsh / 100) |> group_by(DISTRICT_N) |>
+  arrange(year, .by_group = TRUE) |>  mutate(population = approx(x = year, y = pop, xout = year)$y) |>  ungroup() |>  filter(year %in% c(1895, 1907)) |>
+  select(year, DISTRICT_N, population, firsh)
 
 gerdat = dat |> full_join(germap, by = "DISTRICT_N") |> drop_na() 
 
 ### Create cubic trend 
 
-gerdat = gerdat |> mutate(trend = (year - 1890)/10, trendsq = trend*trend, trendcub = trendsq*trend) |> select(-OBJECTID,-SHAPE_LENG,-SHAPE_AREA,-SHAPE_LEN)
+gerdat = gerdat |> mutate(trend = (year - 1890)/10, trendsq = trend*trend, trendcub = trendsq*trend, popdens = population/area, lnpopdens = log(popdens)) |> 
+  select(-OBJECTID,-SHAPE_LENG,-SHAPE_AREA,-SHAPE_LEN,-population,-id, -DISTRICT)
 
 ### Save data
 

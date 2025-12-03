@@ -69,34 +69,37 @@ for (i in 1:length(variables)){
 
 ### Elevation
 
-dem_aws <- get_elev_raster(
+dem_aws = get_elev_raster(
   locations = swmap_wgs84,
   z         = 10,
   src       = "aws",        
   clip      = "locations"   
 )
 
-dem_aws <- rast(dem_aws) 
+dem_aws = rast(dem_aws) 
 
-swmap_wgs84$elev <- exact_extract(dem_aws[[1]], swmap_wgs84, 'mean')
+swmap_wgs84$elev = exact_extract(dem_aws[[1]], swmap_wgs84, 'mean')
 
-tri_riley <- terrain(dem_aws, v = "TRIriley", neighbors = 8)
+tri_riley = terrain(dem_aws, v = "TRIriley", neighbors = 8)
 
 swmap_wgs84$ruggedness <- exact_extract(tri_riley, swmap_wgs84, "mean")
+
+swmap_wgs84$area = as.numeric(st_area(swmap_wgs84)/1000)
 
 ### Response variable
 
 dat = read.xlsx("/home/rstudio/project/Data/raw/Switzerland/Data_Muni_1999.xlsx")
 
 dat = dat |> filter(year > 1899) |> mutate(firsh = first_sector/(first_sector + second_sector + third_sector)) |>
-  select(mun_id, year, firsh) #|> pivot_wider(names_from = year, values_from = firsh, names_prefix = "firsh")
+  select(mun_id, year, firsh, population) #|> pivot_wider(names_from = year, values_from = firsh, names_prefix = "firsh")
 
 swdat = dat |> full_join(swmap_wgs84, by = c("mun_id" = "GMDE")) %>% drop_na() 
 
 ### Create cubic trend 
 
-swdat = swdat |> mutate(trend = (year - 1890)/10, trendsq = trend*trend, trendcub = trendsq*trend) |> select(-BEZIRK,-KT,-NAME)
-  
+swdat = swdat |> mutate(trend = (year - 1890)/10, trendsq = trend*trend, trendcub = trendsq*trend, popdens = population/area, lnpopdens = log(popdens)) |> 
+  select(-BEZIRK,-KT,-NAME,-area,-population)
+
 ### Save data
 
 saveRDS(swdat, file = paste0(getwd(),"/project/Data/processed/swdat.rds"))
